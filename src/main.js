@@ -345,6 +345,17 @@ window.delCatItem = (type, val, parent = null) => {
 };
 
 // --- DATA IMPORT / EXPORT ---
+document.getElementById('exportBackupBtn').onclick = () => {
+    const dataStr = JSON.stringify({ inventory, catalogs }, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Resguardo_IT_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+};
+
 document.getElementById('importDataBtn').onclick = () => importInput.click();
 
 importInput.onchange = (e) => {
