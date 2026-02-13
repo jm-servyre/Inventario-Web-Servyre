@@ -150,37 +150,59 @@ const viewAssetDetail = (id) => {
                 </div>
                 <div style="margin-top: 2rem; padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 12px; font-size: 0.9rem;">
                     <div style="display:flex; justify-content:space-between; margin-bottom: 0.5rem;">
-                        <span style="color:var(--text-dim)">Ubicación</span>
+                        <span style="color:var(--text-dim)">Ubicación / Sede</span>
                         <span style="font-weight:600">${item.location}</span>
                     </div>
                     <div style="display:flex; justify-content:space-between;">
-                        <span style="color:var(--text-dim)">Departamento</span>
-                        <span style="font-weight:600">${item.department}</span>
+                        <span style="color:var(--text-dim)">División / Dirección</span>
+                        <span style="font-weight:600">${item.address || '-'}</span>
                     </div>
                 </div>
             </div>
             
-            <div class="detail-grid-v2" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+            <div class="detail-grid-v2" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                <!-- Main Specs -->
                 <div class="info-card"><label>S/N Serial</label><div class="value">${item.serialNumber}</div></div>
                 <div class="info-card"><label>Resguardo N°</label><div class="value">${item.resguardo || 'Pendiente'}</div></div>
                 
                 <div class="info-card" style="grid-column: span 2;">
-                    <label>Hardware Principal</label>
-                    <div class="value" style="display: flex; gap: 1rem; align-items: center;">
+                    <label>Equipo Principal</label>
+                    <div class="value" style="display: flex; gap: 0.5rem; align-items: center;">
                         <span style="color: var(--primary)">${item.deviceType}</span>
                         <span>${item.brand} ${item.model}</span>
                     </div>
                 </div>
 
-                <div class="info-card"><label>RAM Instalada</label><div class="value">${item.ram} GB</div><div class="spec-bar-container"><div class="spec-bar" style="width: ${(item.ram / 64) * 100}%"></div></div></div>
-                <div class="info-card"><label>Disco Duro</label><div class="value">${item.storageCapacity} GB SSD</div><div class="spec-bar-container"><div class="spec-bar" style="width: ${(item.storageCapacity / 2048) * 100}%; background: var(--secondary)"></div></div></div>
+                <div class="info-card"><label>Hardware Specs</label><div class="value" style="font-size:0.8rem">${item.processor || 'CPU'} / RAM ${item.ram} / ${item.storageCapacity}</div></div>
+                <div class="info-card"><label>Mouse (Serie)</label><div class="value">${item.mouseExternal || '-'}</div></div>
 
-                <div class="info-card"><label>Software / PC</label><div class="value">${item.pcName || 'S/N'} (${item.os || 'Windows'})</div></div>
-                <div class="info-card"><label>Procesador</label><div class="value">${item.processor || 'Desconocido'}</div></div>
+                <!-- Peripherals -->
+                <div class="info-card" style="grid-column: span 2; border-left: 3px solid var(--secondary);">
+                    <label>Monitor / Accesorio</label>
+                    <div class="value" style="font-size: 0.85rem;">
+                        ${item.periphBrand || ''} ${item.periphModel || ''} <code style="margin-left:5px">${item.periphSerial || '-'}</code>
+                    </div>
+                </div>
+
+                <!-- Maintenance & Costs -->
+                <div class="info-card"><label>Costo (Precio U.)</label><div class="value">${item.price || '$0.00'}</div></div>
+                <div class="info-card"><label>Fecha Compra</label><div class="value">${item.purchaseDate || '-'}</div></div>
+                
+                <div class="info-card"><label>Último Manto.</label><div class="value">${item.lastMtto || '-'}</div></div>
+                <div class="info-card"><label>Próximo Manto.</label><div class="value" style="color:var(--primary)">${item.nextMtto || '-'}</div></div>
 
                 <div class="info-card" style="grid-column: span 2;">
-                    <label>Observaciones del Activo</label>
-                    <div class="value" style="font-size: 0.85rem; font-weight: 400; color: var(--text-dim); line-height: 1.6;">${item.notes || 'No se han registrado incidentes ni notas especiales para este resguardo.'}</div>
+                    <label>Reporte de Incidentes / Condiciones</label>
+                    <div class="value" style="font-size: 0.8rem; color: var(--text-dim); line-height: 1.4;">
+                        <strong>Condiciones:</strong> ${item.conditions || 'Sin reporte'}<br>
+                        <strong>Incidentes:</strong> ${item.incidentReport || 'Sin reporte'}
+                    </div>
+                </div>
+
+                <div class="info-card" style="grid-column: span 2;">
+                    <label>Observaciones / Fotos</label>
+                    <div class="value" style="font-size: 0.8rem; color: var(--text-dim);">${item.notes || '-'}</div>
+                    ${item.photos ? `<div style="font-size:0.7rem; color:var(--primary); margin-top:5px; overflow:hidden; text-overflow:ellipsis;">LINK: ${item.photos}</div>` : ''}
                 </div>
             </div>
         </div>
@@ -251,7 +273,19 @@ const openEditForm = (id = null) => {
             document.getElementById('ram').value = i.ram;
             document.getElementById('storageCapacity').value = i.storageCapacity;
             document.getElementById('status').value = i.status;
-            document.getElementById('mouseExternal').checked = i.mouseExternal;
+            document.getElementById('mouseExternal').value = i.mouseExternal || '';
+
+            // New Fields
+            document.getElementById('price').value = i.price || '';
+            document.getElementById('purchaseDate').value = i.purchaseDate || '';
+            document.getElementById('periphBrand').value = i.periphBrand || '';
+            document.getElementById('periphModel').value = i.periphModel || '';
+            document.getElementById('periphSerial').value = i.periphSerial || '';
+            document.getElementById('incidentReport').value = i.incidentReport || '';
+            document.getElementById('lastMtto').value = i.lastMtto || '';
+            document.getElementById('nextMtto').value = i.nextMtto || '';
+            document.getElementById('conditions').value = i.conditions || '';
+            document.getElementById('photos').value = i.photos || '';
             document.getElementById('notes').value = i.notes || '';
         }
     } else {
@@ -358,34 +392,57 @@ document.getElementById('exportBackupBtn').onclick = () => {
 
 // Function to generate and download a Template Excel
 window.downloadTemplate = () => {
-    const templateData = [
-        {
-            "Ubicación": "Corporativo",
-            "Dirección": "Av. Reforma 123",
-            "Departamento": "Sistemas",
-            "Puesto": "Gerente IT",
-            "Usuario": "Juan Perez",
-            "Correo": "juan.perez@servyre.com",
-            "Extensión": "101",
-            "Resguardo": "RES-001",
-            "Equipo": "Laptop",
-            "Marca": "Dell",
-            "Modelo": "Latitude 5430",
-            "Serie": "ABC123XYZ",
-            "Mouse Externo": "SI",
-            "Sistema Operativo": "Windows 11",
-            "Nombre PC": "SERVYRE-IT-01",
-            "Procesador": "Intel i7",
-            "RAM": 16,
-            "Disco": 512,
-            "Estado": "Activo",
-            "Notas": "Comentario de prueba"
-        }
+    const headers = [
+        "Nombre Completo", "Ubicación", "Direccion", "Departamento", "Puesto",
+        "Extension", "Correo", "Resguardo", "Equipo", "Marca", "Modelo", "Serie",
+        "Mouse externo (Laptop)", "Sistema Operativo", "Nombre PC", "Procesador",
+        "RAM", "Disco duro", "Precio unitario", "Fecha de Compra",
+        "Marca (Monitor/Accesorio)", "Modelo (Monitor/Accesorio)", "Serie (Monitor/Accesorio)",
+        "Reporte (Incidentes)", "Ultima Fecha de Mtto.", "Proxima Fecha de Mtto.",
+        "Condiciones", "Fotos"
     ];
-    const ws = XLSX.utils.json_to_sheet(templateData);
+
+    const exampleRow = [
+        "Carlos Daniel Velez Ramirez", "Corporativo", "Direccion de Administracion y Finanzas",
+        "Inteligencia de Operaciones", "Jefe de Inteligencia de Operaciones", "433",
+        "carlos.velez@servyre.com", "Serv-068", "Laptop", "Dell", "Latitude 3500", "JVSRMT2",
+        "1305HS0IL448", "Windows 10/64 bits", "CarlosV-LT", "Intel Core i5-8265U CPU 1.60 GHz",
+        "8 GB", "480 GB SSD", "$16,340.92", "2020-03-12", "Dell", "E1916HV",
+        "CN-0HN22V-72872-72P-DGKB-A00", "", "2025-12-17", "2026-06-17", "", "JVSRMT2"
+    ];
+
+    const instructions = [
+        ["INSTRUCCIONES DE CARGA - SERVYRE IT"],
+        [""],
+        ["1. LLENADO DE DATOS:"],
+        ["   - Respete el orden de las columnas de la hoja 'Inventario'."],
+        ["   - No elimine ni cambie el nombre de los encabezados (Fila 1)."],
+        [""],
+        ["2. FORMATOS ESPECIALES:"],
+        ["   - Fechas: Use el formato AAAA-MM-DD (Ej: 2025-12-31) para mejor compatibilidad."],
+        ["   - RAM/Disco: Puede poner el número seguido de la unidad (Ej: 16 GB)."],
+        [""],
+        ["3. CÓMO SUBIR:"],
+        ["   - Una vez lleno, guarde el archivo."],
+        ["   - En el sistema web, haga clic en el botón 'Importar'."],
+        ["   - Seleccione su archivo Excel y confirme la importación."],
+        [""],
+        ["4. RECOMENDACIÓN:"],
+        ["   - Use la 'Ubicación' tal cual aparece en el sistema (ej. Corporativo) para que los filtros funcionen bien."]
+    ];
+
+    const wsData = [headers, exampleRow];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wsInstr = XLSX.utils.aoa_to_sheet(instructions);
+
+    ws['!cols'] = headers.map(() => ({ wch: 20 }));
+    wsInstr['!cols'] = [{ wch: 80 }];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Inventario");
-    XLSX.writeFile(wb, "Plantilla_Carga_Masiva_Servyre.xlsx");
+    XLSX.utils.book_append_sheet(wb, wsInstr, "COMO_SUBIR");
+
+    XLSX.writeFile(wb, "Plantilla_Inventario_Servyre_V2.xlsx");
 };
 
 document.getElementById('importDataBtn').onclick = () => importInput.click();
@@ -481,11 +538,22 @@ inventoryForm.onsubmit = (e) => {
         os: document.getElementById('os').value,
         pcName: document.getElementById('pcName').value,
         processor: document.getElementById('processor').value,
-        ram: parseInt(document.getElementById('ram').value),
-        storageCapacity: parseInt(document.getElementById('storageCapacity').value),
+        ram: document.getElementById('ram').value,
+        storageCapacity: document.getElementById('storageCapacity').value,
         status: document.getElementById('status').value,
-        mouseExternal: document.getElementById('mouseExternal').checked,
-        notes: document.getElementById('notes').value
+        mouseExternal: document.getElementById('mouseExternal').value,
+        notes: document.getElementById('notes').value,
+        // Added fields
+        price: document.getElementById('price').value,
+        purchaseDate: document.getElementById('purchaseDate').value,
+        periphBrand: document.getElementById('periphBrand').value,
+        periphModel: document.getElementById('periphModel').value,
+        periphSerial: document.getElementById('periphSerial').value,
+        incidentReport: document.getElementById('incidentReport').value,
+        lastMtto: document.getElementById('lastMtto').value,
+        nextMtto: document.getElementById('nextMtto').value,
+        conditions: document.getElementById('conditions').value,
+        photos: document.getElementById('photos').value
     };
 
     if (id) {
