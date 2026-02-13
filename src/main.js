@@ -1,261 +1,415 @@
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import CryptoJS from 'crypto-js';
 
-// Initial Data & State
-let inventory = JSON.parse(localStorage.getItem('servyre_inventory')) || [
-  {
-    id: '1',
-    fullName: 'Jorge Meneses',
-    email: 'jorge.meneses@servyre.com',
-    deviceType: 'Laptop',
-    brand: 'Dell',
-    model: 'Latitude 5430',
-    serialNumber: 'ABC-123-XYZ',
-    ram: 16,
-    storageType: 'SSD',
-    storageCapacity: 512,
-    status: 'Activo',
-    hasPrinter: true,
-    notes: 'Equipo nuevo de gerencia'
-  },
-  {
-    id: '2',
-    fullName: 'Ana García',
-    email: 'ana.garcia@servyre.com',
-    deviceType: 'Desktop',
-    brand: 'HP',
-    model: 'EliteDesk 800',
-    serialNumber: 'HP-987-PRO',
-    ram: 8,
-    storageType: 'HDD',
-    storageCapacity: 1000,
-    status: 'Mantenimiento',
-    hasPrinter: false,
-    notes: 'Requiere cambio a SSD'
-  }
-];
+// --- State & Constants ---
+const MASTER_KEY = 'Servyre2026';
+const STORAGE_KEY = 'servyre_inventory_secure_v2'; // New key for data change
 
-// DOM Elements
+let inventory = [];
+let catalogs = {
+    brands: ['Dell', 'HP', 'Lenovo', 'Apple'],
+    modelsByBrand: {
+        'Dell': ['Latitude 3420', 'Latitude 5430', 'OptiPlex 7090'],
+        'HP': ['EliteDesk 800', 'ProBook 450'],
+        'Lenovo': ['ThinkPad X1'],
+        'Apple': ['MacBook Pro M2']
+    },
+    locations: ['Corporativo', 'Naucalpan', 'Campo', 'Tultitlán']
+};
+
+// --- DOM References ---
 const inventoryBody = document.getElementById('inventoryBody');
 const inventoryForm = document.getElementById('inventoryForm');
 const modalOverlay = document.getElementById('modalOverlay');
-const addItemBtn = document.getElementById('addItemBtn');
-const closeModal = document.getElementById('closeModal');
-const cancelBtn = document.getElementById('cancelBtn');
+const detailModalOverlay = document.getElementById('detailModalOverlay');
+const detailModalBody = document.getElementById('detailModalBody');
+const catalogModalOverlay = document.getElementById('catalogModalOverlay');
 const searchInput = document.getElementById('searchInput');
-const modalTitle = document.getElementById('modalTitle');
-const exportExcelBtn = document.getElementById('exportExcelBtn');
-const exportPdfBtn = document.getElementById('exportPdfBtn');
 
-// Helper: Save to LocalStorage
-const saveToStorage = () => {
-    localStorage.setItem('servyre_inventory', JSON.stringify(inventory));
+// Catalog UI
+const brandInput = document.getElementById('brand');
+const modelInput = document.getElementById('model');
+const locationInput = document.getElementById('location');
+const catalogBrandSelect = document.getElementById('catalogBrandSelect');
+const brandList = document.getElementById('brandList');
+const modelList = document.getElementById('modelList');
+const locationList = document.getElementById('locationList');
+const modelManagementSection = document.getElementById('modelManagementSection');
+
+// --- Core Logic ---
+const encrypt = (data) => CryptoJS.AES.encrypt(JSON.stringify(data), MASTER_KEY).toString();
+const decrypt = (ciphertext) => {
+    try {
+        const bytes = CryptoJS.AES.decrypt(ciphertext, MASTER_KEY);
+        const dec = bytes.toString(CryptoJS.enc.Utf8);
+        return dec ? JSON.parse(dec) : null;
+    } catch (e) { return null; }
 };
 
-// Render Table
+const saveToStorage = () => {
+    localStorage.setItem(STORAGE_KEY, encrypt({ inventory, catalogs }));
+};
+
+const initialize = () => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+        const dec = decrypt(stored);
+        if (dec) {
+            inventory = dec.inventory || [];
+            catalogs = dec.catalogs || catalogs;
+        }
+    }
+    renderTable();
+    syncFormSelects();
+    if (window.lucide) window.lucide.createIcons();
+};
+
+// --- UI Rendering ---
 const renderTable = (data = inventory) => {
     inventoryBody.innerHTML = '';
-    
     data.forEach(item => {
         const tr = document.createElement('tr');
         tr.className = 'fade-in';
-        
-        const statusClass = item.status === 'Activo' ? 'badge-green' : 
-                           item.status === 'Mantenimiento' ? 'badge-orange' : 'badge-blue';
+        tr.style.cursor = 'pointer';
+
+        const sc = item.status === 'Activo' ? 'badge-green' : item.status === 'Mantenimiento' ? 'badge-orange' : 'badge-blue';
 
         tr.innerHTML = `
+            <td><span class="badge badge-blue">${item.location}</span></td>
+            <td>${item.department}</td>
+            <td><code>${item.resguardo || 'N/A'}</code></td>
             <td>
                 <div style="font-weight: 600;">${item.fullName}</div>
-                <div style="font-size: 0.8rem; color: var(--text-dim);">${item.email}</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim);">${item.position}</div>
             </td>
-            <td>
-                <span class="badge badge-blue">${item.deviceType}</span>
-            </td>
-            <td>
-                <div>${item.brand}</div>
-                <div style="font-size: 0.8rem; color: var(--text-dim);">${item.model}</div>
-            </td>
+            <td>${item.deviceType}</td>
+            <td><div>${item.brand}</div><div style="font-size: 0.75rem; color: var(--text-dim);">${item.model}</div></td>
             <td><code>${item.serialNumber}</code></td>
-            <td>
-                <div>${item.ram}GB RAM</div>
-                <div style="font-size: 0.8rem; color: var(--text-dim);">${item.storageCapacity}GB ${item.storageType}</div>
-            </td>
-            <td>
-                <span class="badge ${statusClass}">${item.status}</span>
-            </td>
+            <td>${item.pcName || 'S/N'}</td>
+            <td><span class="badge ${sc}">${item.status}</span></td>
             <td>
                 <div class="btn-group">
-                    <button class="btn btn-secondary btn-icon edit-btn" data-id="${item.id}" title="Editar">✏️</button>
-                    <button class="btn btn-secondary btn-icon delete-btn" data-id="${item.id}" title="Eliminar" style="color: var(--danger)">🗑️</button>
+                    <button class="btn btn-secondary btn-icon edit-btn" title="Editar">✏️</button>
+                    <button class="btn btn-secondary btn-icon delete-btn" style="color:var(--danger)" title="Eliminar">🗑️</button>
                 </div>
             </td>
         `;
-        inventoryBody.appendChild(tr);
-    });
 
-    // Attach row events
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.onclick = () => editItem(btn.dataset.id);
-    });
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.onclick = () => deleteItem(btn.dataset.id);
+        tr.onclick = (e) => {
+            if (e.target.closest('.btn-group')) return;
+            viewAssetDetail(item.id);
+        };
+
+        tr.querySelector('.edit-btn').onclick = (e) => { e.stopPropagation(); openMainForm(item.id); };
+        tr.querySelector('.delete-btn').onclick = (e) => {
+            e.stopPropagation();
+            if (confirm('¿Eliminar registro?')) {
+                inventory = inventory.filter(i => i.id !== item.id);
+                saveToStorage(); renderTable();
+            }
+        };
+
+        inventoryBody.appendChild(tr);
     });
 };
 
-// Modal Logic
-const openModal = (item = null) => {
-    modalOverlay.classList.add('active');
-    if (item) {
-        modalTitle.innerText = 'Editar Registro';
-        document.getElementById('itemId').value = item.id;
-        document.getElementById('fullName').value = item.fullName;
-        document.getElementById('email').value = item.email;
-        document.getElementById('deviceType').value = item.deviceType;
-        document.getElementById('brand').value = item.brand;
-        document.getElementById('model').value = item.model;
-        document.getElementById('serialNumber').value = item.serialNumber;
-        document.getElementById('ram').value = item.ram;
-        document.getElementById('storageType').value = item.storageType;
-        document.getElementById('storageCapacity').value = item.storageCapacity;
-        document.getElementById('status').value = item.status;
-        document.getElementById('hasPrinter').checked = item.hasPrinter;
-        document.getElementById('notes').value = item.notes;
+const viewAssetDetail = (id) => {
+    const item = inventory.find(i => i.id === id);
+    if (!item) return;
+
+    const initials = item.fullName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+    detailModalBody.innerHTML = `
+        <div class="asset-passport fade-in" style="display: block;">
+            <div style="display: grid; grid-template-columns: 200px 1fr; gap: 2rem; margin-bottom: 2rem;">
+                <div class="passport-sidebar">
+                    <div class="user-avatar">${initials}</div>
+                    <h3 style="margin-bottom: 0.5rem;">${item.fullName}</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 1rem;">${item.position}</p>
+                    <span class="badge ${item.status === 'Activo' ? 'badge-green' : 'badge-orange'}">${item.status}</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                    <div class="info-card"><label>Ubicación</label><div class="value">${item.location}</div></div>
+                    <div class="info-card"><label>Departamento</label><div class="value">${item.department}</div></div>
+                    <div class="info-card"><label>Dirección</label><div class="value">${item.address || '-'}</div></div>
+                    <div class="info-card"><label>Extensión</label><div class="value">${item.extension || '-'}</div></div>
+                    <div class="info-card"><label>Correo</label><div class="value">${item.email}</div></div>
+                    <div class="info-card"><label>Resguardo</label><div class="value">${item.resguardo || '-'}</div></div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                <div class="info-card"><label>Equipo</label><div class="value">${item.deviceType}</div></div>
+                <div class="info-card"><label>Marca</label><div class="value">${item.brand}</div></div>
+                <div class="info-card"><label>Modelo</label><div class="value">${item.model}</div></div>
+                <div class="info-card"><label>Serie</label><div class="value">${item.serialNumber}</div></div>
+                
+                <div class="info-card"><label>SO</label><div class="value">${item.os || '-'}</div></div>
+                <div class="info-card"><label>Nombre PC</label><div class="value">${item.pcName || '-'}</div></div>
+                <div class="info-card"><label>Procesador</label><div class="value">${item.processor || '-'}</div></div>
+                <div class="info-card"><label>Mouse Externo</label><div class="value">${item.mouseExternal ? 'Sí' : 'No'}</div></div>
+
+                <div class="info-card"><label>RAM</label><div class="value">${item.ram} GB</div></div>
+                <div class="info-card"><label>Disco Duro</label><div class="value">${item.storageCapacity} GB ${item.storageType}</div></div>
+                <div class="info-card full-width" style="grid-column: span 2;">
+                    <label>Notas</label>
+                    <div class="value" style="font-size: 0.85rem; font-weight: 400; color: var(--text-dim); line-height: 1.4;">${item.notes || 'Sin observaciones.'}</div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    detailModalOverlay.classList.add('active');
+
+    document.getElementById('editFromDetailBtn').onclick = () => {
+        detailModalOverlay.classList.remove('active');
+        openMainForm(item.id);
+    };
+
+    document.getElementById('printDetailBtn').onclick = () => {
+        const doc = new jsPDF('p', 'mm', 'a4');
+        doc.setFillColor(30, 41, 59); doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.text("FICHA DE ACTIVO - SERVYRE", 15, 25);
+
+        const rows = [
+            ["Ubicación", item.location], ["Dirección", item.address], ["Departamento", item.department],
+            ["Puesto", item.position], ["Asignado a", item.fullName], ["Correo", item.email],
+            ["Resguardo", item.resguardo], ["Equipo", item.deviceType], ["Marca/Modelo", item.brand + " " + item.model],
+            ["N° Serie", item.serialNumber], ["Nombre PC", item.pcName], ["Procesador", item.processor],
+            ["RAM", item.ram + " GB"], ["Disco", item.storageCapacity + " GB"], ["Mouse Externo", item.mouseExternal ? "Sí" : "No"]
+        ];
+
+        doc.autoTable({ startY: 50, head: [['Concepto', 'Información']], body: rows, theme: 'striped' });
+        doc.save(`Servyre_${item.serialNumber}.pdf`);
+    };
+};
+
+// --- Form & Catalog Helpers ---
+const syncFormSelects = () => {
+    // Populate Location Selects
+    locationInput.innerHTML = '<option value="">Sel. Ubicación...</option>';
+    catalogs.locations.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = l;
+        locationInput.appendChild(opt);
+    });
+
+    // Populate Brand Selects
+    const currentBrand = brandInput.value;
+    brandInput.innerHTML = '<option value="">Sel. Marca...</option>';
+    catalogBrandSelect.innerHTML = '<option value="">Sel. Marca...</option>';
+    catalogs.brands.forEach(b => {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = b;
+        brandInput.appendChild(opt.cloneNode(true));
+        catalogBrandSelect.appendChild(opt);
+    });
+    brandInput.value = currentBrand;
+
+    renderCatalogItems();
+};
+
+const renderCatalogItems = () => {
+    // Brand List
+    brandList.innerHTML = '';
+    catalogs.brands.forEach(b => {
+        const li = document.createElement('li');
+        li.className = 'catalog-item';
+        li.innerHTML = `<span>${b}</span> <button class="delete-btn" onclick="window.delCatItem('brands', '${b}')">🗑️</button>`;
+        brandList.appendChild(li);
+    });
+
+    // Location List
+    locationList.innerHTML = '';
+    catalogs.locations.forEach(l => {
+        const li = document.createElement('li');
+        li.className = 'catalog-item';
+        li.innerHTML = `<span>${l}</span> <button class="delete-btn" onclick="window.delCatItem('locations', '${l}')">🗑️</button>`;
+        locationList.appendChild(li);
+    });
+
+    // Model List (Based on Selection)
+    const currentBrand = catalogBrandSelect.value;
+    if (currentBrand) {
+        modelManagementSection.style.display = 'block';
+        modelList.innerHTML = '';
+        const models = catalogs.modelsByBrand[currentBrand] || [];
+        models.forEach(m => {
+            const li = document.createElement('li');
+            li.className = 'catalog-item';
+            li.innerHTML = `<span>${m}</span> <button class="delete-btn" onclick="window.delCatItem('models', '${m}', '${currentBrand}')">🗑️</button>`;
+            modelList.appendChild(li);
+        });
     } else {
-        modalTitle.innerText = 'Nuevo Registro de IT';
-        inventoryForm.reset();
-        document.getElementById('itemId').value = '';
+        modelManagementSection.style.display = 'none';
     }
 };
 
-const hideModal = () => {
-    modalOverlay.classList.remove('active');
+window.delCatItem = (type, val, parent = null) => {
+    if (!confirm(`¿Eliminar ${val}?`)) return;
+    if (type === 'brands') {
+        catalogs.brands = catalogs.brands.filter(b => b !== val);
+        delete catalogs.modelsByBrand[val];
+    } else if (type === 'locations') {
+        catalogs.locations = catalogs.locations.filter(l => l !== val);
+    } else if (type === 'models' && parent) {
+        catalogs.modelsByBrand[parent] = catalogs.modelsByBrand[parent].filter(m => m !== val);
+    }
+    saveToStorage(); syncFormSelects();
 };
 
-// CRUD Operations
-const saveItem = (e) => {
+const openMainForm = (id = null) => {
+    inventoryForm.reset();
+    document.getElementById('itemId').value = id || '';
+    document.getElementById('modalTitle').textContent = id ? 'Editar Registro' : 'Nuevo Registro de IT';
+
+    if (id) {
+        const item = inventory.find(i => i.id === id);
+        if (item) {
+            locationInput.value = item.location;
+            document.getElementById('address').value = item.address || '';
+            document.getElementById('department').value = item.department;
+            document.getElementById('position').value = item.position;
+            document.getElementById('fullName').value = item.fullName;
+            document.getElementById('email').value = item.email;
+            document.getElementById('extension').value = item.extension || '';
+            document.getElementById('resguardo').value = item.resguardo || '';
+            document.getElementById('deviceType').value = item.deviceType;
+            brandInput.value = item.brand;
+            updateModelsDropdown();
+            modelInput.value = item.model;
+            document.getElementById('serialNumber').value = item.serialNumber;
+            document.getElementById('os').value = item.os || '';
+            document.getElementById('pcName').value = item.pcName || '';
+            document.getElementById('processor').value = item.processor || '';
+            document.getElementById('ram').value = item.ram;
+            document.getElementById('storageCapacity').value = item.storageCapacity;
+            document.getElementById('status').value = item.status;
+            document.getElementById('mouseExternal').checked = item.mouseExternal;
+            document.getElementById('notes').value = item.notes || '';
+        }
+    } else {
+        modelInput.disabled = true;
+    }
+    modalOverlay.classList.add('active');
+};
+
+const updateModelsDropdown = () => {
+    const brand = brandInput.value;
+    modelInput.innerHTML = '<option value="">Sel. Modelo...</option>';
+    if (brand) {
+        modelInput.disabled = false;
+        (catalogs.modelsByBrand[brand] || []).forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = m;
+            modelInput.appendChild(opt);
+        });
+    } else {
+        modelInput.disabled = true;
+    }
+};
+
+// --- Events ---
+brandInput.onchange = updateModelsDropdown;
+catalogBrandSelect.onchange = renderCatalogItems;
+
+inventoryForm.onsubmit = (e) => {
     e.preventDefault();
     const id = document.getElementById('itemId').value;
-    
     const itemData = {
         id: id || Date.now().toString(),
+        location: locationInput.value,
+        address: document.getElementById('address').value,
+        department: document.getElementById('department').value,
+        position: document.getElementById('position').value,
         fullName: document.getElementById('fullName').value,
         email: document.getElementById('email').value,
+        extension: document.getElementById('extension').value,
+        resguardo: document.getElementById('resguardo').value,
         deviceType: document.getElementById('deviceType').value,
-        brand: document.getElementById('brand').value,
-        model: document.getElementById('model').value,
+        brand: brandInput.value,
+        model: modelInput.value,
         serialNumber: document.getElementById('serialNumber').value,
+        os: document.getElementById('os').value,
+        pcName: document.getElementById('pcName').value,
+        processor: document.getElementById('processor').value,
         ram: parseInt(document.getElementById('ram').value),
-        storageType: document.getElementById('storageType').value,
+        storageType: 'SSD', // Fixed for simplicity or add selector if needed
         storageCapacity: parseInt(document.getElementById('storageCapacity').value),
         status: document.getElementById('status').value,
-        hasPrinter: document.getElementById('hasPrinter').checked,
-        notes: document.getElementById('notes').value,
+        mouseExternal: document.getElementById('mouseExternal').checked,
+        notes: document.getElementById('notes').value
     };
 
     if (id) {
-        const index = inventory.findIndex(i => i.id === id);
-        inventory[index] = itemData;
+        const idx = inventory.findIndex(i => i.id === id);
+        inventory[idx] = itemData;
     } else {
         inventory.unshift(itemData);
     }
-
-    saveToStorage();
-    renderTable();
-    hideModal();
+    saveToStorage(); renderTable();
+    modalOverlay.classList.remove('active');
 };
 
-const editItem = (id) => {
-    const item = inventory.find(i => i.id === id);
-    if (item) openModal(item);
+searchInput.oninput = (e) => {
+    const q = e.target.value.toLowerCase();
+    renderTable(inventory.filter(i =>
+        i.fullName.toLowerCase().includes(q) ||
+        i.serialNumber.toLowerCase().includes(q) ||
+        i.location.toLowerCase().includes(q)
+    ));
 };
 
-const deleteItem = (id) => {
-    if (confirm('¿Estás seguro de que deseas eliminar este registro?')) {
-        inventory = inventory.filter(i => i.id !== id);
-        saveToStorage();
-        renderTable();
+// Catalog Triggers
+document.getElementById('addBrandBtn').onclick = () => {
+    const val = document.getElementById('newBrandInput').value.trim();
+    if (val && !catalogs.brands.includes(val)) {
+        catalogs.brands.push(val); catalogs.modelsByBrand[val] = [];
+        document.getElementById('newBrandInput').value = '';
+        saveToStorage(); syncFormSelects();
+    }
+};
+document.getElementById('addModelBtn').onclick = () => {
+    const b = catalogBrandSelect.value;
+    const m = document.getElementById('newModelInput').value.trim();
+    if (b && m && !catalogs.modelsByBrand[b].includes(m)) {
+        catalogs.modelsByBrand[b].push(m);
+        document.getElementById('newModelInput').value = '';
+        saveToStorage(); syncFormSelects();
+    }
+};
+document.getElementById('addLocationBtn').onclick = () => {
+    const val = document.getElementById('newLocationInput').value.trim();
+    if (val && !catalogs.locations.includes(val)) {
+        catalogs.locations.push(val);
+        document.getElementById('newLocationInput').value = '';
+        saveToStorage(); syncFormSelects();
     }
 };
 
-// Search Logic
-searchInput.oninput = (e) => {
-    const query = e.target.value.toLowerCase();
-    const filtered = inventory.filter(item => 
-        item.fullName.toLowerCase().includes(query) ||
-        item.email.toLowerCase().includes(query) ||
-        item.model.toLowerCase().includes(query) ||
-        item.serialNumber.toLowerCase().includes(query) ||
-        item.brand.toLowerCase().includes(query)
-    );
-    renderTable(filtered);
+// Tab Switching
+window.switchCat = (id) => {
+    document.querySelectorAll('.cat-section').forEach(s => s.style.display = 'none');
+    document.querySelectorAll('.catalog-tab').forEach(t => t.classList.remove('active-tab'));
+    document.getElementById(`cat-${id}`).style.display = 'block';
+    event.currentTarget.classList.add('active-tab');
 };
 
-// Export Logic
-exportExcelBtn.onclick = () => {
-    const dataToExport = inventory.map(item => ({
-        'Nombre': item.fullName,
-        'Email': item.email,
-        'Tipo': item.deviceType,
-        'Marca': item.brand,
-        'Modelo': item.model,
-        'Serie': item.serialNumber,
-        'RAM (GB)': item.ram,
-        'Disco': item.storageType,
-        'Capacidad (GB)': item.storageCapacity,
-        'Estado': item.status,
-        'Impresora': item.hasPrinter ? 'Sí' : 'No',
-        'Notas': item.notes
-    }));
+// Global Buttons
+document.getElementById('addItemBtn').onclick = () => openMainForm();
+document.getElementById('manageCatalogsBtn').onclick = () => { syncFormSelects(); catalogModalOverlay.classList.add('active'); };
+document.getElementById('closeModal').onclick = () => modalOverlay.classList.remove('active');
+document.getElementById('cancelBtn').onclick = () => modalOverlay.classList.remove('active');
+document.getElementById('closeDetailModal').onclick = () => detailModalOverlay.classList.remove('active');
+document.getElementById('closeCatalogModal').onclick = () => catalogModalOverlay.classList.remove('active');
+document.getElementById('finishCatalogBtn').onclick = () => catalogModalOverlay.classList.remove('active');
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario IT");
-    XLSX.writeFile(workbook, "Inventario_IT_Servyre.xlsx");
-};
-
-exportPdfBtn.onclick = () => {
-    const doc = new jsPDF('l', 'mm', 'a4');
-    
-    doc.setFontSize(20);
-    doc.text("Inventario IT - Servyre", 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Fecha de exportación: ${new Date().toLocaleDateString()}`, 14, 28);
-
-    const headers = [["Nombre", "Correo", "Tipo", "Marca/Modelo", "Serie", "Specs", "Estado"]];
-    const data = inventory.map(item => [
-        item.fullName,
-        item.email,
-        item.deviceType,
-        `${item.brand} ${item.model}`,
-        item.serialNumber,
-        `${item.ram}GB / ${item.storageCapacity}GB ${item.storageType}`,
-        item.status
-    ]);
-
-    doc.autoTable({
-        head: headers,
-        body: data,
-        startY: 35,
-        theme: 'grid',
-        headStyles: { fillColor: [99, 102, 241] },
-        styles: { fontSize: 8 }
-    });
-
-    doc.save("Inventario_IT_Servyre.pdf");
-};
-
-// Event Listeners
-addItemBtn.onclick = () => openModal();
-closeModal.onclick = hideModal;
-cancelBtn.onclick = hideModal;
-inventoryForm.onsubmit = saveItem;
-
-// Close modal when clicking outside
 window.onclick = (e) => {
-    if (e.target === modalOverlay) hideModal();
+    if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('active');
 };
 
-// Initial Render
-renderTable();
-console.log('Servyre Inventario IT Loaded');
+// BOOT
+initialize();
+console.log('Servyre Pro Loaded - Full Fields & Location Catalogs Ready.');
