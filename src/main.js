@@ -86,16 +86,15 @@ const renderTable = (data = inventory) => {
         tr.className = 'fade-in';
         tr.style.cursor = 'pointer';
 
-        const sc = item.status === 'Activo' ? 'badge-green' : item.status === 'Mantenimiento' ? 'badge-orange' : 'badge-danger';
+        const sc = item.status === 'Activo' ? 'badge-green' : item.status === 'Baja' ? 'badge-danger' : 'badge-orange';
 
         tr.innerHTML = `
             <td><span class="badge badge-blue">${item.location}</span></td>
-            <td>${item.department}</td>
-            <td><code>${item.resguardo || '-'}</code></td>
             <td>
                 <div style="font-weight: 700; color: var(--text);">${item.fullName}</div>
                 <div style="font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;">${item.position}</div>
             </td>
+            <td>${item.department}</td>
             <td><span style="font-weight: 500;">${item.deviceType}</span></td>
             <td>
                 <div style="font-weight: 600;">${item.brand}</div>
@@ -104,6 +103,7 @@ const renderTable = (data = inventory) => {
             <td><code>${item.serialNumber}</code></td>
             <td>${item.pcName || '-'}</td>
             <td><span class="badge ${sc}">${item.status}</span></td>
+            <td><code>${item.resguardo || '-'}</code></td>
             <td>
                 <div class="btn-group-glass">
                     <button class="glass-btn btn-row-edit" title="Editar"><i data-lucide="edit-2" style="width:14px"></i></button>

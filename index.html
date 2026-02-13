@@ -71,14 +71,14 @@
           <thead>
             <tr>
               <th>Ubicación</th>
+              <th>Usuario / Puesto</th>
               <th>Departamento</th>
-              <th>Resguardo</th>
-              <th>Asignado / Puesto</th>
-              <th>Hardware</th>
+              <th>Equipo</th>
               <th>Marca / Modelo</th>
               <th>Serie</th>
               <th>Nombre PC</th>
               <th>Estado</th>
+              <th>Resguardo</th>
               <th></th>
             </tr>
           </thead>
@@ -133,20 +133,50 @@
               <div class="form-group"><label>Marca</label><select id="brand" required></select></div>
               <div class="form-group"><label>Modelo</label><select id="model" required disabled></select></div>
               <div class="form-group"><label>Serie</label><input type="text" id="serialNumber" required></div>
+              <div class="form-group"><label>Mouse Externo (Serie)</label><input type="text" id="mouseExternal"
+                  placeholder="Serie del mouse o S/N"></div>
               <div class="form-group"><label>Sistema Operativo</label><input type="text" id="os"></div>
               <div class="form-group"><label>Nombre PC</label><input type="text" id="pcName"></div>
               <div class="form-group"><label>Procesador</label><input type="text" id="processor"></div>
-              <div class="form-group"><label>RAM (GB)</label><input type="number" id="ram" required></div>
-              <div class="form-group"><label>Disco (GB)</label><input type="number" id="storageCapacity" required></div>
+              <div class="form-group"><label>RAM</label><input type="text" id="ram" required placeholder="Ej: 8 GB">
+              </div>
+              <div class="form-group"><label>Disco Duro</label><input type="text" id="storageCapacity" required
+                  placeholder="Ej: 480 GB SSD"></div>
               <div class="form-group"><label>Estado</label><select id="status" required>
                   <option value="Activo">Activo</option>
                   <option value="Mantenimiento">Mantenimiento</option>
                   <option value="Baja">Baja</option>
                 </select></div>
-              <div class="form-group check-row">
-                <input type="checkbox" id="mouseExternal">
-                <label for="mouseExternal" class="label-check">Mouse Externo</label>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3><i data-lucide="monitor"></i> Monitor / Accesorios</h3>
+            <div class="form-grid">
+              <div class="form-group"><label>Marca (Monitor)</label><input type="text" id="periphBrand"></div>
+              <div class="form-group"><label>Modelo (Monitor)</label><input type="text" id="periphModel"></div>
+              <div class="form-group"><label>Serie (Monitor)</label><input type="text" id="periphSerial"></div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3><i data-lucide="calendar"></i> Costos y Mantenimiento</h3>
+            <div class="form-grid">
+              <div class="form-group"><label>Precio Unitario</label><input type="text" id="price" placeholder="$0.00">
               </div>
+              <div class="form-group"><label>Fecha de Compra</label><input type="date" id="purchaseDate"></div>
+              <div class="form-group"><label>Última Fecha Mtto.</label><input type="date" id="lastMtto"></div>
+              <div class="form-group"><label>Próxima Fecha Mtto.</label><input type="date" id="nextMtto"></div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3><i data-lucide="alert-triangle"></i> Reportes y Condiciones</h3>
+            <div class="form-grid">
+              <div class="form-group"><label>Reporte de Incidentes</label><input type="text" id="incidentReport"></div>
+              <div class="form-group"><label>Condiciones Físicas</label><input type="text" id="conditions"></div>
+              <div class="form-group"><label>Link Fotos</label><input type="text" id="photos"
+                  placeholder="URL de fotos"></div>
             </div>
           </div>
 
@@ -233,9 +263,14 @@
       <div class="modal-body-detail" id="detailModalBody">
         <!-- Data injected by JS -->
       </div>
-      <div class="modal-footer-detail">
-        <button id="printDetailBtn" class="action-btn"><i data-lucide="printer"></i> Ficha PDF</button>
-        <button id="editFromDetailBtn" class="action-btn primary"><i data-lucide="edit-3"></i> Editar Datos</button>
+      <div class="detail-modal-footer">
+        <button id="printDetailBtn" class="premium-btn"
+          style="background: var(--surface); border: 1px solid var(--border);">
+          <i data-lucide="printer"></i> <span>Ficha PDF</span>
+        </button>
+        <button id="editFromDetailBtn" class="premium-btn primary">
+          <i data-lucide="edit-3"></i> <span>Editar Datos</span>
+        </button>
       </div>
     </div>
   </div>
