@@ -478,30 +478,39 @@ importInput.onchange = (e) => {
             if (confirm(`Se han detectado ${json.length} registros. ¿Desea importarlos al inventario actual?`)) {
                 let importedCount = 0;
                 json.forEach(row => {
-                    const newItem = {
-                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                    inventory.push({
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                        fullName: row['Nombre Completo'] || 'N/A',
                         location: row['Ubicación'] || 'Corporativo',
-                        address: row['Dirección'] || '',
+                        address: row['Direccion'] || '',
                         department: row['Departamento'] || 'General',
                         position: row['Puesto'] || '',
-                        fullName: row['Usuario'] || 'N/A',
+                        extension: row['Extension'] || '',
                         email: row['Correo'] || '',
-                        extension: row['Extensión'] || '',
                         resguardo: row['Resguardo'] || '',
                         deviceType: row['Equipo'] || 'Laptop',
                         brand: row['Marca'] || '',
                         model: row['Modelo'] || '',
-                        serialNumber: row['Serie'] || 'SIN-SERIE-' + Date.now(),
+                        serialNumber: row['Serie'] || 'SN-' + Date.now().toString().slice(-6),
+                        mouseExternal: row['Mouse externo (Laptop)'] || '',
                         os: row['Sistema Operativo'] || '',
                         pcName: row['Nombre PC'] || '',
                         processor: row['Procesador'] || '',
-                        ram: parseInt(row['RAM']) || 8,
-                        storageCapacity: parseInt(row['Disco']) || 256,
-                        status: row['Estado'] || 'Activo',
-                        mouseExternal: (row['Mouse Externo'] || '').toString().toUpperCase() === 'SI',
-                        notes: row['Notas'] || ''
-                    };
-                    inventory.push(newItem);
+                        ram: row['RAM'] || '8 GB',
+                        storageCapacity: row['Disco duro'] || '256 GB SSD',
+                        price: row['Precio unitario'] || '',
+                        purchaseDate: row['Fecha de Compra'] || '',
+                        periphBrand: row['Marca (Monitor/Accesorio)'] || '',
+                        periphModel: row['Modelo (Monitor/Accesorio)'] || '',
+                        periphSerial: row['Serie (Monitor/Accesorio)'] || '',
+                        incidentReport: row['Reporte (Incidentes)'] || '',
+                        lastMtto: row['Ultima Fecha de Mtto.'] || '',
+                        nextMtto: row['Proxima Fecha de Mtto.'] || '',
+                        conditions: row['Condiciones'] || '',
+                        photos: row['Fotos'] || '',
+                        status: 'Activo',
+                        notes: ''
+                    });
                     importedCount++;
                 });
                 saveToStorage();
